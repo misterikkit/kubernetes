@@ -58,8 +58,8 @@ func BenchmarkSchedulingAntiAffinity(b *testing.B) {
 		{nodes: 500, pods: 0, minOps: 500},
 		{nodes: 500, pods: 250, minOps: 250},
 	}
-	setupStrategy := testutils.NewSimpleWithControllerCreatePodStrategy("rc")
 	// NewSimpleWithControllerCreatePodStrategy will add name=rc to pods.
+	setupStrategy := testutils.NewSimpleWithControllerCreatePodStrategy("rc")
 	basePod := makeBasePodWithAntiAffinity(map[string]string{"name": "rc"})
 	testStrategy := testutils.NewCustomCreatePodStrategy(basePod)
 	for _, test := range tests {
