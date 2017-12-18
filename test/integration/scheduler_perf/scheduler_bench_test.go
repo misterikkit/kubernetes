@@ -50,34 +50,46 @@ func BenchmarkScheduling(b *testing.B) {
 	}
 }
 
-// BenchmarkSchedulingAntiAffinity benchmarks the scheduling rate when the
-// cluster has various quantities of nodes and scheduled pods.
-// New pods are scheduled with anti-affinity matching the pre-existing pods.
+// BenchmarkSchedulingAntiAffinity benchmarks the scheduling rate of pods with
+// PodAntiAffinity rules when the cluster has various quantities of nodes and
+// scheduled pods.
 func BenchmarkSchedulingAntiAffinity(b *testing.B) {
 	tests := []struct{ nodes, pods, minOps int }{
 		{nodes: 500, pods: 0, minOps: 500},
 		{nodes: 500, pods: 250, minOps: 250},
 	}
-	// NewSimpleWithControllerCreatePodStrategy will add name=rc to pods.
-	setupStrategy := testutils.NewSimpleWithControllerCreatePodStrategy("rc")
-	basePod := makeBasePodWithAntiAffinity(map[string]string{"name": "rc"})
-	testStrategy := testutils.NewCustomCreatePodStrategy(basePod)
+	// The setup strategy creates pods with anti-affinity for each other.
+	setupBasePod := makeBasePodWithAntiAffinity(
+		map[string]string{"name": "setup", "color": "green"},
+		map[string]string{"name": "setup"})
+	setupStrategy := testutils.NewCustomCreatePodStrategy(setupBasePod)
+	// The test strategy creates pods with anti-affinity for all others (test + setup).
+	testBasePod := makeBasePodWithAntiAffinity(
+		map[string]string{"name": "test", "color": "green"},
+		map[string]string{"color": "green"})
+	testStrategy := testutils.NewCustomCreatePodStrategy(testBasePod)
 	for _, test := range tests {
 		name := fmt.Sprintf("%vNodes/%vPods", test.nodes, test.pods)
-		b.Run(name, func(b *testing.B) {
-			benchmarkScheduling(test.nodes, test.pods, test.minOps, setupStrategy, testStrategy, b)
-		})
+		if test.pods+test.minOps > test.nodes {
+			b.Run(name, func(b *testing.B) {
+				b.Fatalf("Scheduling %v pods on %v nodes is impossible in this test", test.pods+test.minOps, test.nodes)
+			})
+		} else {
+			b.Run(name, func(b *testing.B) {
+				benchmarkScheduling(test.nodes, test.pods, test.minOps, setupStrategy, testStrategy, b)
+			})
+		}
 	}
 
 }
 
 // makeBasePodWithAntiAffinity creates a Pod object to be used as a template.
 // The Pod has an anti-affinity requirement against nodes running pods with the given labels.
-func makeBasePodWithAntiAffinity(labels map[string]string) *v1.Pod {
+func makeBasePodWithAntiAffinity(podLabels, affinityLabels map[string]string) *v1.Pod {
 	basePod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "affinity-pod-",
-			Labels:       map[string]string{"testType": "affinity"},
+			Labels:       podLabels,
 		},
 		Spec: testutils.MakePodSpec(),
 	}
@@ -86,7 +98,7 @@ func makeBasePodWithAntiAffinity(labels map[string]string) *v1.Pod {
 			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
 				{
 					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: labels,
+						MatchLabels: affinityLabels,
 					},
 					TopologyKey: apis.LabelHostname,
 				},
