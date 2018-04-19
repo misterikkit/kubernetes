@@ -22,35 +22,35 @@ import (
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/labels"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 )
 
 // FitPredicate is a function that indicates if a pod fits into an existing node.
 // The failure information is given by the error.
-type FitPredicate func(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulercache.NodeInfo) (bool, []PredicateFailureReason, error)
+type FitPredicate func(pod *v1.Pod, meta PredicateMetadata, nodeInfo *cache.NodeInfo) (bool, []PredicateFailureReason, error)
 
 // PriorityMapFunction is a function that computes per-node results for a given node.
 // TODO: Figure out the exact API of this method.
 // TODO: Change interface{} to a specific type.
-type PriorityMapFunction func(pod *v1.Pod, meta interface{}, nodeInfo *schedulercache.NodeInfo) (schedulerapi.HostPriority, error)
+type PriorityMapFunction func(pod *v1.Pod, meta interface{}, nodeInfo *cache.NodeInfo) (schedulerapi.HostPriority, error)
 
 // PriorityReduceFunction is a function that aggregated per-node results and computes
 // final scores for all nodes.
 // TODO: Figure out the exact API of this method.
 // TODO: Change interface{} to a specific type.
-type PriorityReduceFunction func(pod *v1.Pod, meta interface{}, nodeNameToInfo map[string]*schedulercache.NodeInfo, result schedulerapi.HostPriorityList) error
+type PriorityReduceFunction func(pod *v1.Pod, meta interface{}, nodeNameToInfo map[string]*cache.NodeInfo, result schedulerapi.HostPriorityList) error
 
 // PredicateMetadataProducer is a function that computes predicate metadata for a given pod.
-type PredicateMetadataProducer func(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) PredicateMetadata
+type PredicateMetadataProducer func(pod *v1.Pod, nodeNameToInfo map[string]*cache.NodeInfo) PredicateMetadata
 
 // PriorityMetadataProducer is a function that computes metadata for a given pod. This
 // is now used for only for priority functions. For predicates please use PredicateMetadataProducer.
-type PriorityMetadataProducer func(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) interface{}
+type PriorityMetadataProducer func(pod *v1.Pod, nodeNameToInfo map[string]*cache.NodeInfo) interface{}
 
 // PriorityFunction is a function that computes scores for all nodes.
 // DEPRECATED
 // Use Map-Reduce pattern for priority functions.
-type PriorityFunction func(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error)
+type PriorityFunction func(pod *v1.Pod, nodeNameToInfo map[string]*cache.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error)
 
 // PriorityConfig is a config used for a priority function.
 type PriorityConfig struct {
@@ -64,12 +64,12 @@ type PriorityConfig struct {
 }
 
 // EmptyPredicateMetadataProducer returns a no-op MetadataProducer type.
-func EmptyPredicateMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) PredicateMetadata {
+func EmptyPredicateMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*cache.NodeInfo) PredicateMetadata {
 	return nil
 }
 
 // EmptyPriorityMetadataProducer returns a no-op PriorityMetadataProducer type.
-func EmptyPriorityMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) interface{} {
+func EmptyPriorityMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*cache.NodeInfo) interface{} {
 	return nil
 }
 
@@ -95,7 +95,7 @@ type PodLister interface {
 	List(labels.Selector) ([]*v1.Pod, error)
 	// This is similar to "List()", but the returned slice does not
 	// contain pods that don't pass `podFilter`.
-	FilteredList(podFilter schedulercache.PodFilter, selector labels.Selector) ([]*v1.Pod, error)
+	FilteredList(podFilter cache.PodFilter, selector labels.Selector) ([]*v1.Pod, error)
 }
 
 // ServiceLister interface represents anything that can produce a list of services; the list is consumed by a scheduler.
@@ -164,6 +164,6 @@ func (f EmptyStatefulSetLister) GetPodStatefulSets(pod *v1.Pod) (sss []*apps.Sta
 // PredicateMetadata interface represents anything that can access a predicate metadata.
 type PredicateMetadata interface {
 	ShallowCopy() PredicateMetadata
-	AddPod(addedPod *v1.Pod, nodeInfo *schedulercache.NodeInfo) error
+	AddPod(addedPod *v1.Pod, nodeInfo *cache.NodeInfo) error
 	RemovePod(deletedPod *v1.Pod) error
 }

@@ -27,7 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 	schedulertesting "k8s.io/kubernetes/pkg/scheduler/testing"
 )
 
@@ -339,7 +339,7 @@ func TestSelectorSpreadPriority(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods, makeNodeList(test.nodes))
+		nodeNameToInfo := cache.CreateNodeNameToInfoMap(test.pods, makeNodeList(test.nodes))
 		selectorSpread := SelectorSpread{
 			serviceLister:     schedulertesting.FakeServiceLister(test.services),
 			controllerLister:  schedulertesting.FakeControllerLister(test.rcs),
@@ -574,7 +574,7 @@ func TestZoneSelectorSpreadPriority(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods, makeLabeledNodeList(labeledNodes))
+		nodeNameToInfo := cache.CreateNodeNameToInfoMap(test.pods, makeLabeledNodeList(labeledNodes))
 		selectorSpread := SelectorSpread{
 			serviceLister:     schedulertesting.FakeServiceLister(test.services),
 			controllerLister:  schedulertesting.FakeControllerLister(test.rcs),
@@ -764,7 +764,7 @@ func TestZoneSpreadPriority(t *testing.T) {
 	rss := []*extensions.ReplicaSet{{Spec: extensions.ReplicaSetSpec{Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}}}}}
 
 	for i, test := range tests {
-		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods, makeLabeledNodeList(test.nodes))
+		nodeNameToInfo := cache.CreateNodeNameToInfoMap(test.pods, makeLabeledNodeList(test.nodes))
 		zoneSpread := ServiceAntiAffinity{podLister: schedulertesting.FakePodLister(test.pods), serviceLister: schedulertesting.FakeServiceLister(test.services), label: "zone"}
 
 		mataDataProducer := NewPriorityMetadataFactory(

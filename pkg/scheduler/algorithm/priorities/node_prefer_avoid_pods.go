@@ -24,12 +24,12 @@ import (
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	priorityutil "k8s.io/kubernetes/pkg/scheduler/algorithm/priorities/util"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 )
 
 // CalculateNodePreferAvoidPodsPriorityMap priorities nodes according to the node annotation
 // "scheduler.alpha.kubernetes.io/preferAvoidPods".
-func CalculateNodePreferAvoidPodsPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulercache.NodeInfo) (schedulerapi.HostPriority, error) {
+func CalculateNodePreferAvoidPodsPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *cache.NodeInfo) (schedulerapi.HostPriority, error) {
 	node := nodeInfo.Node()
 	if node == nil {
 		return schedulerapi.HostPriority{}, fmt.Errorf("node not found")

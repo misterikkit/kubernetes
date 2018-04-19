@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 )
 
 func TestResourceLimistPriority(t *testing.T) {
@@ -138,7 +138,7 @@ func TestResourceLimistPriority(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(nil, test.nodes)
+		nodeNameToInfo := cache.CreateNodeNameToInfoMap(nil, test.nodes)
 		list, err := priorityFunction(ResourceLimitsPriorityMap, nil, nil)(test.pod, nodeNameToInfo, test.nodes)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)

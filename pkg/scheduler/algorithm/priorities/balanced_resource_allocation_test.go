@@ -27,7 +27,7 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/features"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 )
 
 // getExistingVolumeCountForNode gets the current number of volumes on node.
@@ -400,7 +400,7 @@ func TestBalancedResourceAllocation(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods, test.nodes)
+		nodeNameToInfo := cache.CreateNodeNameToInfoMap(test.pods, test.nodes)
 		if len(test.pod.Spec.Volumes) > 0 {
 			maxVolumes := 5
 			for _, info := range nodeNameToInfo {

@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 )
 
 func TestMostRequested(t *testing.T) {
@@ -209,7 +209,7 @@ func TestMostRequested(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods, test.nodes)
+		nodeNameToInfo := cache.CreateNodeNameToInfoMap(test.pods, test.nodes)
 		list, err := priorityFunction(MostRequestedPriorityMap, nil, nil)(test.pod, nodeNameToInfo, test.nodes)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)

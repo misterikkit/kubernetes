@@ -19,7 +19,7 @@ package testing
 import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 )
 
 // PodsToCache is used for testing
@@ -50,7 +50,7 @@ func (p PodsToCache) UpdateNode(oldNode, newNode *v1.Node) error { return nil }
 func (p PodsToCache) RemoveNode(node *v1.Node) error { return nil }
 
 // UpdateNodeNameToInfoMap returns nil.
-func (p PodsToCache) UpdateNodeNameToInfoMap(infoMap map[string]*schedulercache.NodeInfo) error {
+func (p PodsToCache) UpdateNodeNameToInfoMap(infoMap map[string]*cache.NodeInfo) error {
 	return nil
 }
 

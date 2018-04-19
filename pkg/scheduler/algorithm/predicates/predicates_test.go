@@ -32,7 +32,7 @@ import (
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 	schedulertesting "k8s.io/kubernetes/pkg/scheduler/testing"
 )
 
@@ -68,7 +68,7 @@ func makeAllocatableResources(milliCPU, memory, pods, extendedA, storage, hugePa
 	}
 }
 
-func newResourcePod(usage ...schedulercache.Resource) *v1.Pod {
+func newResourcePod(usage ...cache.Resource) *v1.Pod {
 	containers := []v1.Container{}
 	for _, req := range usage {
 		containers = append(containers, v1.Container{
@@ -82,12 +82,12 @@ func newResourcePod(usage ...schedulercache.Resource) *v1.Pod {
 	}
 }
 
-func newResourceInitPod(pod *v1.Pod, usage ...schedulercache.Resource) *v1.Pod {
+func newResourceInitPod(pod *v1.Pod, usage ...cache.Resource) *v1.Pod {
 	pod.Spec.InitContainers = newResourcePod(usage...).Spec.Containers
 	return pod
 }
 
-func PredicateMetadata(p *v1.Pod, nodeInfo map[string]*schedulercache.NodeInfo) algorithm.PredicateMetadata {
+func PredicateMetadata(p *v1.Pod, nodeInfo map[string]*cache.NodeInfo) algorithm.PredicateMetadata {
 	pm := PredicateMetadataFactory{schedulertesting.FakePodLister{p}}
 	return pm.GetMetadata(p, nodeInfo)
 }
@@ -95,7 +95,7 @@ func PredicateMetadata(p *v1.Pod, nodeInfo map[string]*schedulercache.NodeInfo) 
 func TestPodFitsResources(t *testing.T) {
 	enoughPodsTests := []struct {
 		pod                      *v1.Pod
-		nodeInfo                 *schedulercache.NodeInfo
+		nodeInfo                 *cache.NodeInfo
 		fits                     bool
 		test                     string
 		reasons                  []algorithm.PredicateFailureReason
@@ -103,15 +103,15 @@ func TestPodFitsResources(t *testing.T) {
 	}{
 		{
 			pod: &v1.Pod{},
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 10, Memory: 20})),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 10, Memory: 20})),
 			fits: true,
 			test: "no resources requested always fits",
 		},
 		{
-			pod: newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 10, Memory: 20})),
+			pod: newResourcePod(cache.Resource{MilliCPU: 1, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 10, Memory: 20})),
 			fits: false,
 			test: "too many resources fails",
 			reasons: []algorithm.PredicateFailureReason{
@@ -120,234 +120,234 @@ func TestPodFitsResources(t *testing.T) {
 			},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}), schedulercache.Resource{MilliCPU: 3, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 8, Memory: 19})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{MilliCPU: 1, Memory: 1}), cache.Resource{MilliCPU: 3, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 8, Memory: 19})),
 			fits:    false,
 			test:    "too many resources fails due to init container cpu",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(v1.ResourceCPU, 3, 8, 10)},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}), schedulercache.Resource{MilliCPU: 3, Memory: 1}, schedulercache.Resource{MilliCPU: 2, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 8, Memory: 19})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{MilliCPU: 1, Memory: 1}), cache.Resource{MilliCPU: 3, Memory: 1}, cache.Resource{MilliCPU: 2, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 8, Memory: 19})),
 			fits:    false,
 			test:    "too many resources fails due to highest init container cpu",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(v1.ResourceCPU, 3, 8, 10)},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}), schedulercache.Resource{MilliCPU: 1, Memory: 3}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 9, Memory: 19})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{MilliCPU: 1, Memory: 1}), cache.Resource{MilliCPU: 1, Memory: 3}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 9, Memory: 19})),
 			fits:    false,
 			test:    "too many resources fails due to init container memory",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(v1.ResourceMemory, 3, 19, 20)},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}), schedulercache.Resource{MilliCPU: 1, Memory: 3}, schedulercache.Resource{MilliCPU: 1, Memory: 2}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 9, Memory: 19})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{MilliCPU: 1, Memory: 1}), cache.Resource{MilliCPU: 1, Memory: 3}, cache.Resource{MilliCPU: 1, Memory: 2}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 9, Memory: 19})),
 			fits:    false,
 			test:    "too many resources fails due to highest init container memory",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(v1.ResourceMemory, 3, 19, 20)},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}), schedulercache.Resource{MilliCPU: 1, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 9, Memory: 19})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{MilliCPU: 1, Memory: 1}), cache.Resource{MilliCPU: 1, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 9, Memory: 19})),
 			fits: true,
 			test: "init container fits because it's the max, not sum, of containers and init containers",
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}), schedulercache.Resource{MilliCPU: 1, Memory: 1}, schedulercache.Resource{MilliCPU: 1, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 9, Memory: 19})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{MilliCPU: 1, Memory: 1}), cache.Resource{MilliCPU: 1, Memory: 1}, cache.Resource{MilliCPU: 1, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 9, Memory: 19})),
 			fits: true,
 			test: "multiple init containers fit because it's the max, not sum, of containers and init containers",
 		},
 		{
-			pod: newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 5})),
+			pod: newResourcePod(cache.Resource{MilliCPU: 1, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 5, Memory: 5})),
 			fits: true,
 			test: "both resources fit",
 		},
 		{
-			pod: newResourcePod(schedulercache.Resource{MilliCPU: 2, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 9, Memory: 5})),
+			pod: newResourcePod(cache.Resource{MilliCPU: 2, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 9, Memory: 5})),
 			fits:    false,
 			test:    "one resource memory fits",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(v1.ResourceCPU, 2, 9, 10)},
 		},
 		{
-			pod: newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 2}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 19})),
+			pod: newResourcePod(cache.Resource{MilliCPU: 1, Memory: 2}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 5, Memory: 19})),
 			fits:    false,
 			test:    "one resource cpu fits",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(v1.ResourceMemory, 2, 19, 20)},
 		},
 		{
-			pod: newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 19})),
+			pod: newResourcePod(cache.Resource{MilliCPU: 5, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 5, Memory: 19})),
 			fits: true,
 			test: "equal edge case",
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 4, Memory: 1}), schedulercache.Resource{MilliCPU: 5, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 19})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{MilliCPU: 4, Memory: 1}), cache.Resource{MilliCPU: 5, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 5, Memory: 19})),
 			fits: true,
 			test: "equal edge case for init container",
 		},
 		{
-			pod:      newResourcePod(schedulercache.Resource{ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 1}}),
-			nodeInfo: schedulercache.NewNodeInfo(newResourcePod(schedulercache.Resource{})),
+			pod:      newResourcePod(cache.Resource{ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 1}}),
+			nodeInfo: cache.NewNodeInfo(newResourcePod(cache.Resource{})),
 			fits:     true,
 			test:     "extended resource fits",
 		},
 		{
-			pod:      newResourceInitPod(newResourcePod(schedulercache.Resource{}), schedulercache.Resource{ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 1}}),
-			nodeInfo: schedulercache.NewNodeInfo(newResourcePod(schedulercache.Resource{})),
+			pod:      newResourceInitPod(newResourcePod(cache.Resource{}), cache.Resource{ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 1}}),
+			nodeInfo: cache.NewNodeInfo(newResourcePod(cache.Resource{})),
 			fits:     true,
 			test:     "extended resource fits for init container",
 		},
 		{
 			pod: newResourcePod(
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 10}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 0}})),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 10}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 0}})),
 			fits:    false,
 			test:    "extended resource capacity enforced",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(extendedResourceA, 10, 0, 5)},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{}),
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 10}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 0}})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{}),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 10}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 0}})),
 			fits:    false,
 			test:    "extended resource capacity enforced for init container",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(extendedResourceA, 10, 0, 5)},
 		},
 		{
 			pod: newResourcePod(
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 1}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 5}})),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 1}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 5}})),
 			fits:    false,
 			test:    "extended resource allocatable enforced",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(extendedResourceA, 1, 5, 5)},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{}),
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 1}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 5}})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{}),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 1}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 5}})),
 			fits:    false,
 			test:    "extended resource allocatable enforced for init container",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(extendedResourceA, 1, 5, 5)},
 		},
 		{
 			pod: newResourcePod(
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 3}},
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 3}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 2}})),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 3}},
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 3}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 2}})),
 			fits:    false,
 			test:    "extended resource allocatable enforced for multiple containers",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(extendedResourceA, 6, 2, 5)},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{}),
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 3}},
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 3}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 2}})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{}),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 3}},
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 3}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 2}})),
 			fits: true,
 			test: "extended resource allocatable admits multiple init containers",
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{}),
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 6}},
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 3}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 2}})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{}),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 6}},
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 3}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{extendedResourceA: 2}})),
 			fits:    false,
 			test:    "extended resource allocatable enforced for multiple init containers",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(extendedResourceA, 6, 2, 5)},
 		},
 		{
 			pod: newResourcePod(
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceB: 1}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0})),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceB: 1}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0})),
 			fits:    false,
 			test:    "extended resource allocatable enforced for unknown resource",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(extendedResourceB, 1, 0, 0)},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{}),
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceB: 1}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{}),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceB: 1}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0})),
 			fits:    false,
 			test:    "extended resource allocatable enforced for unknown resource for init container",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(extendedResourceB, 1, 0, 0)},
 		},
 		{
 			pod: newResourcePod(
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{kubernetesIOResourceA: 10}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0})),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{kubernetesIOResourceA: 10}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0})),
 			fits:    false,
 			test:    "kubernetes.io resource capacity enforced",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(kubernetesIOResourceA, 10, 0, 0)},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{}),
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{kubernetesIOResourceB: 10}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{}),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{kubernetesIOResourceB: 10}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0})),
 			fits:    false,
 			test:    "kubernetes.io resource capacity enforced for init container",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(kubernetesIOResourceB, 10, 0, 0)},
 		},
 		{
 			pod: newResourcePod(
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 10}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 0}})),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 10}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 0}})),
 			fits:    false,
 			test:    "hugepages resource capacity enforced",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(hugePageResourceA, 10, 0, 5)},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{}),
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 10}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 0}})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{}),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 10}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 0}})),
 			fits:    false,
 			test:    "hugepages resource capacity enforced for init container",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(hugePageResourceA, 10, 0, 5)},
 		},
 		{
 			pod: newResourcePod(
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 3}},
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 3}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 2}})),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 3}},
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 3}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0, ScalarResources: map[v1.ResourceName]int64{hugePageResourceA: 2}})),
 			fits:    false,
 			test:    "hugepages resource allocatable enforced for multiple containers",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(hugePageResourceA, 6, 2, 5)},
 		},
 		{
 			pod: newResourcePod(
-				schedulercache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceB: 1}}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 0, Memory: 0})),
+				cache.Resource{MilliCPU: 1, Memory: 1, ScalarResources: map[v1.ResourceName]int64{extendedResourceB: 1}}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 0, Memory: 0})),
 			fits: true,
 			ignoredExtendedResources: sets.NewString(string(extendedResourceB)),
 			test: "skip checking ignored extended resource",
@@ -373,39 +373,39 @@ func TestPodFitsResources(t *testing.T) {
 
 	notEnoughPodsTests := []struct {
 		pod      *v1.Pod
-		nodeInfo *schedulercache.NodeInfo
+		nodeInfo *cache.NodeInfo
 		fits     bool
 		test     string
 		reasons  []algorithm.PredicateFailureReason
 	}{
 		{
 			pod: &v1.Pod{},
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 10, Memory: 20})),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 10, Memory: 20})),
 			fits:    false,
 			test:    "even without specified resources predicate fails when there's no space for additional pod",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(v1.ResourcePods, 1, 1, 1)},
 		},
 		{
-			pod: newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 5})),
+			pod: newResourcePod(cache.Resource{MilliCPU: 1, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 5, Memory: 5})),
 			fits:    false,
 			test:    "even if both resources fit predicate fails when there's no space for additional pod",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(v1.ResourcePods, 1, 1, 1)},
 		},
 		{
-			pod: newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 19})),
+			pod: newResourcePod(cache.Resource{MilliCPU: 5, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 5, Memory: 19})),
 			fits:    false,
 			test:    "even for equal edge case predicate fails when there's no space for additional pod",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(v1.ResourcePods, 1, 1, 1)},
 		},
 		{
-			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 1}), schedulercache.Resource{MilliCPU: 5, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 19})),
+			pod: newResourceInitPod(newResourcePod(cache.Resource{MilliCPU: 5, Memory: 1}), cache.Resource{MilliCPU: 5, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 5, Memory: 19})),
 			fits:    false,
 			test:    "even for equal edge case predicate fails when there's no space for additional pod due to init container",
 			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(v1.ResourcePods, 1, 1, 1)},
@@ -428,15 +428,15 @@ func TestPodFitsResources(t *testing.T) {
 
 	storagePodsTests := []struct {
 		pod      *v1.Pod
-		nodeInfo *schedulercache.NodeInfo
+		nodeInfo *cache.NodeInfo
 		fits     bool
 		test     string
 		reasons  []algorithm.PredicateFailureReason
 	}{
 		{
-			pod: newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 10, Memory: 10})),
+			pod: newResourcePod(cache.Resource{MilliCPU: 1, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 10, Memory: 10})),
 			fits: false,
 			test: "due to container scratch disk",
 			reasons: []algorithm.PredicateFailureReason{
@@ -444,16 +444,16 @@ func TestPodFitsResources(t *testing.T) {
 			},
 		},
 		{
-			pod: newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 2, Memory: 10})),
+			pod: newResourcePod(cache.Resource{MilliCPU: 1, Memory: 1}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 2, Memory: 10})),
 			fits: true,
 			test: "pod fit",
 		},
 		{
-			pod: newResourcePod(schedulercache.Resource{EphemeralStorage: 25}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 2, Memory: 2})),
+			pod: newResourcePod(cache.Resource{EphemeralStorage: 25}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 2, Memory: 2})),
 			fits: false,
 			test: "storage ephemeral local storage request exceeds allocatable",
 			reasons: []algorithm.PredicateFailureReason{
@@ -461,9 +461,9 @@ func TestPodFitsResources(t *testing.T) {
 			},
 		},
 		{
-			pod: newResourcePod(schedulercache.Resource{EphemeralStorage: 10}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 2, Memory: 2})),
+			pod: newResourcePod(cache.Resource{EphemeralStorage: 10}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 2, Memory: 2})),
 			fits: true,
 			test: "pod fits",
 		},
@@ -531,7 +531,7 @@ func TestPodFitsHost(t *testing.T) {
 	expectedFailureReasons := []algorithm.PredicateFailureReason{ErrPodNotMatchHostName}
 
 	for _, test := range tests {
-		nodeInfo := schedulercache.NewNodeInfo()
+		nodeInfo := cache.NewNodeInfo()
 		nodeInfo.SetNode(test.node)
 		fits, reasons, err := PodFitsHost(test.pod, PredicateMetadata(test.pod, nil), nodeInfo)
 		if err != nil {
@@ -573,96 +573,96 @@ func newPod(host string, hostPortInfos ...string) *v1.Pod {
 func TestPodFitsHostPorts(t *testing.T) {
 	tests := []struct {
 		pod      *v1.Pod
-		nodeInfo *schedulercache.NodeInfo
+		nodeInfo *cache.NodeInfo
 		fits     bool
 		test     string
 	}{
 		{
 			pod:      &v1.Pod{},
-			nodeInfo: schedulercache.NewNodeInfo(),
+			nodeInfo: cache.NewNodeInfo(),
 			fits:     true,
 			test:     "nothing running",
 		},
 		{
 			pod: newPod("m1", "UDP/127.0.0.1/8080"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "UDP/127.0.0.1/9090")),
 			fits: true,
 			test: "other port",
 		},
 		{
 			pod: newPod("m1", "UDP/127.0.0.1/8080"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "UDP/127.0.0.1/8080")),
 			fits: false,
 			test: "same udp port",
 		},
 		{
 			pod: newPod("m1", "TCP/127.0.0.1/8080"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "TCP/127.0.0.1/8080")),
 			fits: false,
 			test: "same tcp port",
 		},
 		{
 			pod: newPod("m1", "TCP/127.0.0.1/8080"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "TCP/127.0.0.2/8080")),
 			fits: true,
 			test: "different host ip",
 		},
 		{
 			pod: newPod("m1", "UDP/127.0.0.1/8080"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "TCP/127.0.0.1/8080")),
 			fits: true,
 			test: "different protocol",
 		},
 		{
 			pod: newPod("m1", "UDP/127.0.0.1/8000", "UDP/127.0.0.1/8080"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "UDP/127.0.0.1/8080")),
 			fits: false,
 			test: "second udp port conflict",
 		},
 		{
 			pod: newPod("m1", "TCP/127.0.0.1/8001", "UDP/127.0.0.1/8080"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "TCP/127.0.0.1/8001", "UDP/127.0.0.1/8081")),
 			fits: false,
 			test: "first tcp port conflict",
 		},
 		{
 			pod: newPod("m1", "TCP/0.0.0.0/8001"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "TCP/127.0.0.1/8001")),
 			fits: false,
 			test: "first tcp port conflict due to 0.0.0.0 hostIP",
 		},
 		{
 			pod: newPod("m1", "TCP/10.0.10.10/8001", "TCP/0.0.0.0/8001"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "TCP/127.0.0.1/8001")),
 			fits: false,
 			test: "TCP hostPort conflict due to 0.0.0.0 hostIP",
 		},
 		{
 			pod: newPod("m1", "TCP/127.0.0.1/8001"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "TCP/0.0.0.0/8001")),
 			fits: false,
 			test: "second tcp port conflict to 0.0.0.0 hostIP",
 		},
 		{
 			pod: newPod("m1", "UDP/127.0.0.1/8001"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "TCP/0.0.0.0/8001")),
 			fits: true,
 			test: "second different protocol",
 		},
 		{
 			pod: newPod("m1", "UDP/127.0.0.1/8001"),
-			nodeInfo: schedulercache.NewNodeInfo(
+			nodeInfo: cache.NewNodeInfo(
 				newPod("m1", "TCP/0.0.0.0/8001", "UDP/0.0.0.0/8001")),
 			fits: false,
 			test: "UDP hostPort conflict due to 0.0.0.0 hostIP",
@@ -709,14 +709,14 @@ func TestGCEDiskConflicts(t *testing.T) {
 	}
 	tests := []struct {
 		pod      *v1.Pod
-		nodeInfo *schedulercache.NodeInfo
+		nodeInfo *cache.NodeInfo
 		isOk     bool
 		test     string
 	}{
-		{&v1.Pod{}, schedulercache.NewNodeInfo(), true, "nothing"},
-		{&v1.Pod{}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "one state"},
-		{&v1.Pod{Spec: volState}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), false, "same state"},
-		{&v1.Pod{Spec: volState2}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "different state"},
+		{&v1.Pod{}, cache.NewNodeInfo(), true, "nothing"},
+		{&v1.Pod{}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "one state"},
+		{&v1.Pod{Spec: volState}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), false, "same state"},
+		{&v1.Pod{Spec: volState2}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "different state"},
 	}
 	expectedFailureReasons := []algorithm.PredicateFailureReason{ErrDiskConflict}
 
@@ -762,14 +762,14 @@ func TestAWSDiskConflicts(t *testing.T) {
 	}
 	tests := []struct {
 		pod      *v1.Pod
-		nodeInfo *schedulercache.NodeInfo
+		nodeInfo *cache.NodeInfo
 		isOk     bool
 		test     string
 	}{
-		{&v1.Pod{}, schedulercache.NewNodeInfo(), true, "nothing"},
-		{&v1.Pod{}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "one state"},
-		{&v1.Pod{Spec: volState}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), false, "same state"},
-		{&v1.Pod{Spec: volState2}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "different state"},
+		{&v1.Pod{}, cache.NewNodeInfo(), true, "nothing"},
+		{&v1.Pod{}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "one state"},
+		{&v1.Pod{Spec: volState}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), false, "same state"},
+		{&v1.Pod{Spec: volState2}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "different state"},
 	}
 	expectedFailureReasons := []algorithm.PredicateFailureReason{ErrDiskConflict}
 
@@ -821,14 +821,14 @@ func TestRBDDiskConflicts(t *testing.T) {
 	}
 	tests := []struct {
 		pod      *v1.Pod
-		nodeInfo *schedulercache.NodeInfo
+		nodeInfo *cache.NodeInfo
 		isOk     bool
 		test     string
 	}{
-		{&v1.Pod{}, schedulercache.NewNodeInfo(), true, "nothing"},
-		{&v1.Pod{}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "one state"},
-		{&v1.Pod{Spec: volState}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), false, "same state"},
-		{&v1.Pod{Spec: volState2}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "different state"},
+		{&v1.Pod{}, cache.NewNodeInfo(), true, "nothing"},
+		{&v1.Pod{}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "one state"},
+		{&v1.Pod{Spec: volState}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), false, "same state"},
+		{&v1.Pod{Spec: volState2}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "different state"},
 	}
 	expectedFailureReasons := []algorithm.PredicateFailureReason{ErrDiskConflict}
 
@@ -880,14 +880,14 @@ func TestISCSIDiskConflicts(t *testing.T) {
 	}
 	tests := []struct {
 		pod      *v1.Pod
-		nodeInfo *schedulercache.NodeInfo
+		nodeInfo *cache.NodeInfo
 		isOk     bool
 		test     string
 	}{
-		{&v1.Pod{}, schedulercache.NewNodeInfo(), true, "nothing"},
-		{&v1.Pod{}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "one state"},
-		{&v1.Pod{Spec: volState}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), false, "same state"},
-		{&v1.Pod{Spec: volState2}, schedulercache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "different state"},
+		{&v1.Pod{}, cache.NewNodeInfo(), true, "nothing"},
+		{&v1.Pod{}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "one state"},
+		{&v1.Pod{Spec: volState}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), false, "same state"},
+		{&v1.Pod{Spec: volState2}, cache.NewNodeInfo(&v1.Pod{Spec: volState}), true, "different state"},
 	}
 	expectedFailureReasons := []algorithm.PredicateFailureReason{ErrDiskConflict}
 
@@ -1364,7 +1364,7 @@ func TestPodFitsSelector(t *testing.T) {
 
 	for _, test := range tests {
 		node := v1.Node{ObjectMeta: metav1.ObjectMeta{Labels: test.labels}}
-		nodeInfo := schedulercache.NewNodeInfo()
+		nodeInfo := cache.NewNodeInfo()
 		nodeInfo.SetNode(&node)
 
 		fits, reasons, err := PodMatchNodeSelector(test.pod, PredicateMetadata(test.pod, nil), nodeInfo)
@@ -1430,7 +1430,7 @@ func TestNodeLabelPresence(t *testing.T) {
 
 	for _, test := range tests {
 		node := v1.Node{ObjectMeta: metav1.ObjectMeta{Labels: label}}
-		nodeInfo := schedulercache.NewNodeInfo()
+		nodeInfo := cache.NewNodeInfo()
 		nodeInfo.SetNode(&node)
 
 		labelChecker := NodeLabelChecker{test.labels, test.presence}
@@ -1577,9 +1577,9 @@ func TestServiceAffinity(t *testing.T) {
 	for _, test := range tests {
 		testIt := func(skipPrecompute bool) {
 			nodes := []v1.Node{node1, node2, node3, node4, node5}
-			nodeInfo := schedulercache.NewNodeInfo()
+			nodeInfo := cache.NewNodeInfo()
 			nodeInfo.SetNode(test.node)
-			nodeInfoMap := map[string]*schedulercache.NodeInfo{test.node.Name: nodeInfo}
+			nodeInfoMap := map[string]*cache.NodeInfo{test.node.Name: nodeInfo}
 			// Reimplementing the logic that the scheduler implements: Any time it makes a predicate, it registers any precomputations.
 			predicate, precompute := NewServiceAffinityPredicate(schedulertesting.FakePodLister(test.pods), schedulertesting.FakeServiceLister(test.services), FakeNodeListInfo(nodes), test.labels)
 			// Register a precomputation or Rewrite the precomputation to a no-op, depending on the state we want to test.
@@ -2015,7 +2015,7 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 	for _, test := range tests {
 		os.Setenv(KubeMaxPDVols, strconv.Itoa(test.maxVols))
 		pred := NewMaxPDVolumeCountPredicate(EBSVolumeFilterType, pvInfo, pvcInfo)
-		fits, reasons, err := pred(test.newPod, PredicateMetadata(test.newPod, nil), schedulercache.NewNodeInfo(test.existingPods...))
+		fits, reasons, err := pred(test.newPod, PredicateMetadata(test.newPod, nil), cache.NewNodeInfo(test.existingPods...))
 		if err != nil {
 			t.Errorf("%s: unexpected error: %v", test.test, err)
 		}
@@ -2047,7 +2047,7 @@ func newPodWithPort(hostPorts ...int) *v1.Pod {
 func TestRunGeneralPredicates(t *testing.T) {
 	resourceTests := []struct {
 		pod      *v1.Pod
-		nodeInfo *schedulercache.NodeInfo
+		nodeInfo *cache.NodeInfo
 		node     *v1.Node
 		fits     bool
 		test     string
@@ -2056,8 +2056,8 @@ func TestRunGeneralPredicates(t *testing.T) {
 	}{
 		{
 			pod: &v1.Pod{},
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 9, Memory: 19})),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 9, Memory: 19})),
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{Name: "machine1"},
 				Status:     v1.NodeStatus{Capacity: makeResources(10, 20, 32, 0, 0, 0).Capacity, Allocatable: makeAllocatableResources(10, 20, 32, 0, 0, 0)},
@@ -2067,9 +2067,9 @@ func TestRunGeneralPredicates(t *testing.T) {
 			test: "no resources/port/host requested always fits",
 		},
 		{
-			pod: newResourcePod(schedulercache.Resource{MilliCPU: 8, Memory: 10}),
-			nodeInfo: schedulercache.NewNodeInfo(
-				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 19})),
+			pod: newResourcePod(cache.Resource{MilliCPU: 8, Memory: 10}),
+			nodeInfo: cache.NewNodeInfo(
+				newResourcePod(cache.Resource{MilliCPU: 5, Memory: 19})),
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{Name: "machine1"},
 				Status:     v1.NodeStatus{Capacity: makeResources(10, 20, 32, 0, 0, 0).Capacity, Allocatable: makeAllocatableResources(10, 20, 32, 0, 0, 0)},
@@ -2088,7 +2088,7 @@ func TestRunGeneralPredicates(t *testing.T) {
 					NodeName: "machine2",
 				},
 			},
-			nodeInfo: schedulercache.NewNodeInfo(),
+			nodeInfo: cache.NewNodeInfo(),
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{Name: "machine1"},
 				Status:     v1.NodeStatus{Capacity: makeResources(10, 20, 32, 0, 0, 0).Capacity, Allocatable: makeAllocatableResources(10, 20, 32, 0, 0, 0)},
@@ -2100,7 +2100,7 @@ func TestRunGeneralPredicates(t *testing.T) {
 		},
 		{
 			pod:      newPodWithPort(123),
-			nodeInfo: schedulercache.NewNodeInfo(newPodWithPort(123)),
+			nodeInfo: cache.NewNodeInfo(newPodWithPort(123)),
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{Name: "machine1"},
 				Status:     v1.NodeStatus{Capacity: makeResources(10, 20, 32, 0, 0, 0).Capacity, Allocatable: makeAllocatableResources(10, 20, 32, 0, 0, 0)},
@@ -2729,9 +2729,9 @@ func TestInterPodAffinity(t *testing.T) {
 			info:      FakeNodeInfo(*node),
 			podLister: schedulertesting.FakePodLister(test.pods),
 		}
-		nodeInfo := schedulercache.NewNodeInfo(podsOnNode...)
+		nodeInfo := cache.NewNodeInfo(podsOnNode...)
 		nodeInfo.SetNode(test.node)
-		nodeInfoMap := map[string]*schedulercache.NodeInfo{test.node.Name: nodeInfo}
+		nodeInfoMap := map[string]*cache.NodeInfo{test.node.Name: nodeInfo}
 		fits, reasons, _ := fit.InterPodAffinityMatches(test.pod, PredicateMetadata(test.pod, nodeInfoMap), nodeInfo)
 		if !fits && !reflect.DeepEqual(reasons, test.expectFailureReasons) {
 			t.Errorf("%s: unexpected failure reasons: %v, want: %v", test.test, reasons, test.expectFailureReasons)
@@ -3194,7 +3194,7 @@ func TestInterPodAffinityWithMultipleNodes(t *testing.T) {
 
 	for indexTest, test := range tests {
 		nodeListInfo := FakeNodeListInfo(test.nodes)
-		nodeInfoMap := make(map[string]*schedulercache.NodeInfo)
+		nodeInfoMap := make(map[string]*cache.NodeInfo)
 		for i, node := range test.nodes {
 			var podsOnNode []*v1.Pod
 			for _, pod := range test.pods {
@@ -3203,7 +3203,7 @@ func TestInterPodAffinityWithMultipleNodes(t *testing.T) {
 				}
 			}
 
-			nodeInfo := schedulercache.NewNodeInfo(podsOnNode...)
+			nodeInfo := cache.NewNodeInfo(podsOnNode...)
 			nodeInfo.SetNode(&test.nodes[i])
 			nodeInfoMap[node.Name] = nodeInfo
 		}
@@ -3225,9 +3225,9 @@ func TestInterPodAffinityWithMultipleNodes(t *testing.T) {
 			}
 			affinity := test.pod.Spec.Affinity
 			if affinity != nil && affinity.NodeAffinity != nil {
-				nodeInfo := schedulercache.NewNodeInfo()
+				nodeInfo := cache.NewNodeInfo()
 				nodeInfo.SetNode(&node)
-				nodeInfoMap := map[string]*schedulercache.NodeInfo{node.Name: nodeInfo}
+				nodeInfoMap := map[string]*cache.NodeInfo{node.Name: nodeInfo}
 				fits2, reasons, err := PodMatchNodeSelector(test.pod, PredicateMetadata(test.pod, nodeInfoMap), nodeInfo)
 				if err != nil {
 					t.Errorf("%s: unexpected error: %v", test.test, err)
@@ -3431,7 +3431,7 @@ func TestPodToleratesTaints(t *testing.T) {
 	expectedFailureReasons := []algorithm.PredicateFailureReason{ErrTaintsTolerationsNotMatch}
 
 	for _, test := range podTolerateTaintsTests {
-		nodeInfo := schedulercache.NewNodeInfo()
+		nodeInfo := cache.NewNodeInfo()
 		nodeInfo.SetNode(&test.node)
 		fits, reasons, err := PodToleratesNodeTaints(test.pod, PredicateMetadata(test.pod, nil), nodeInfo)
 		if err != nil {
@@ -3446,8 +3446,8 @@ func TestPodToleratesTaints(t *testing.T) {
 	}
 }
 
-func makeEmptyNodeInfo(node *v1.Node) *schedulercache.NodeInfo {
-	nodeInfo := schedulercache.NewNodeInfo()
+func makeEmptyNodeInfo(node *v1.Node) *cache.NodeInfo {
+	nodeInfo := cache.NewNodeInfo()
 	nodeInfo.SetNode(node)
 	return nodeInfo
 }
@@ -3511,7 +3511,7 @@ func TestPodSchedulesOnNodeWithMemoryPressureCondition(t *testing.T) {
 
 	tests := []struct {
 		pod      *v1.Pod
-		nodeInfo *schedulercache.NodeInfo
+		nodeInfo *cache.NodeInfo
 		fits     bool
 		name     string
 	}{
@@ -3595,7 +3595,7 @@ func TestPodSchedulesOnNodeWithDiskPressureCondition(t *testing.T) {
 
 	tests := []struct {
 		pod      *v1.Pod
-		nodeInfo *schedulercache.NodeInfo
+		nodeInfo *cache.NodeInfo
 		fits     bool
 		name     string
 	}{
@@ -3829,7 +3829,7 @@ func TestVolumeZonePredicate(t *testing.T) {
 
 	for _, test := range tests {
 		fit := NewVolumeZonePredicate(pvInfo, pvcInfo, nil)
-		node := &schedulercache.NodeInfo{}
+		node := &cache.NodeInfo{}
 		node.SetNode(test.Node)
 
 		fits, reasons, err := fit(test.Pod, nil, node)
@@ -3922,7 +3922,7 @@ func TestVolumeZonePredicateMultiZone(t *testing.T) {
 
 	for _, test := range tests {
 		fit := NewVolumeZonePredicate(pvInfo, pvcInfo, nil)
-		node := &schedulercache.NodeInfo{}
+		node := &cache.NodeInfo{}
 		node.SetNode(test.Node)
 
 		fits, reasons, err := fit(test.Pod, nil, node)
@@ -4042,7 +4042,7 @@ func TestVolumeZonePredicateWithVolumeBinding(t *testing.T) {
 
 	for _, test := range tests {
 		fit := NewVolumeZonePredicate(pvInfo, pvcInfo, classInfo)
-		node := &schedulercache.NodeInfo{}
+		node := &cache.NodeInfo{}
 		node.SetNode(test.Node)
 
 		fits, _, err := fit(test.Pod, nil, node)

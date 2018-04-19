@@ -21,7 +21,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 )
 
 // This is a reasonable size range of all container images. 90%ile of images on dockerhub drops into this range.
@@ -36,7 +36,7 @@ const (
 // based on the total size of those images.
 // - If none of the images are present, this node will be given the lowest priority.
 // - If some of the images are present on a node, the larger their sizes' sum, the higher the node's priority.
-func ImageLocalityPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulercache.NodeInfo) (schedulerapi.HostPriority, error) {
+func ImageLocalityPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *cache.NodeInfo) (schedulerapi.HostPriority, error) {
 	node := nodeInfo.Node()
 	if node == nil {
 		return schedulerapi.HostPriority{}, fmt.Errorf("node not found")

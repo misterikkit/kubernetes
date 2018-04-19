@@ -29,7 +29,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	priorityutil "k8s.io/kubernetes/pkg/scheduler/algorithm/priorities/util"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 	schedutil "k8s.io/kubernetes/pkg/scheduler/util"
 )
 
@@ -50,7 +50,7 @@ type matchingPodAntiAffinityTerm struct {
 type predicateMetadata struct {
 	pod           *v1.Pod
 	podBestEffort bool
-	podRequest    *schedulercache.Resource
+	podRequest    *cache.Resource
 	podPorts      []*v1.ContainerPort
 	//key is a pod full name with the anti-affinity rules.
 	matchingAntiAffinityTerms map[string][]matchingPodAntiAffinityTerm
@@ -108,7 +108,7 @@ func NewPredicateMetadataFactory(podLister algorithm.PodLister) algorithm.Predic
 }
 
 // GetMetadata returns the predicateMetadata used which will be used by various predicates.
-func (pfactory *PredicateMetadataFactory) GetMetadata(pod *v1.Pod, nodeNameToInfoMap map[string]*schedulercache.NodeInfo) algorithm.PredicateMetadata {
+func (pfactory *PredicateMetadataFactory) GetMetadata(pod *v1.Pod, nodeNameToInfoMap map[string]*cache.NodeInfo) algorithm.PredicateMetadata {
 	// If we cannot compute metadata, just return nil
 	if pod == nil {
 		return nil
@@ -194,7 +194,7 @@ func (meta *predicateMetadata) RemovePod(deletedPod *v1.Pod) error {
 
 // AddPod changes predicateMetadata assuming that `newPod` is added to the
 // system.
-func (meta *predicateMetadata) AddPod(addedPod *v1.Pod, nodeInfo *schedulercache.NodeInfo) error {
+func (meta *predicateMetadata) AddPod(addedPod *v1.Pod, nodeInfo *cache.NodeInfo) error {
 	addedPodFullName := schedutil.GetPodFullName(addedPod)
 	if addedPodFullName == schedutil.GetPodFullName(meta.pod) {
 		return fmt.Errorf("addedPod and meta.pod must not be the same")
@@ -327,7 +327,7 @@ func podMatchesAffinityTermProperties(pod *v1.Pod, properties []*affinityTermPro
 // It ignores topology. It returns a set of Pods that are checked later by the affinity
 // predicate. With this set of pods available, the affinity predicate does not
 // need to check all the pods in the cluster.
-func getPodsMatchingAffinity(pod *v1.Pod, nodeInfoMap map[string]*schedulercache.NodeInfo) (affinityPods map[string][]*v1.Pod, antiAffinityPods map[string][]*v1.Pod, err error) {
+func getPodsMatchingAffinity(pod *v1.Pod, nodeInfoMap map[string]*cache.NodeInfo) (affinityPods map[string][]*v1.Pod, antiAffinityPods map[string][]*v1.Pod, err error) {
 	allNodeNames := make([]string, 0, len(nodeInfoMap))
 
 	affinity := pod.Spec.Affinity

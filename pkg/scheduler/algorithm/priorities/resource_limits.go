@@ -22,7 +22,7 @@ import (
 	"k8s.io/api/core/v1"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 
 	"github.com/golang/glog"
 )
@@ -34,7 +34,7 @@ import (
 // of the pod are satisfied, the node is assigned a score of 1.
 // Rationale of choosing the lowest score of 1 is that this is mainly selected to break ties between nodes that have
 // same scores assigned by one of least and most requested priority functions.
-func ResourceLimitsPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulercache.NodeInfo) (schedulerapi.HostPriority, error) {
+func ResourceLimitsPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *cache.NodeInfo) (schedulerapi.HostPriority, error) {
 	node := nodeInfo.Node()
 	if node == nil {
 		return schedulerapi.HostPriority{}, fmt.Errorf("node not found")
@@ -85,8 +85,8 @@ func computeScore(limit, allocatable int64) int64 {
 // priority functions because most or perhaps all priority functions work
 // with schedulercache.Resource.
 // TODO: cache it as part of metadata passed to priority functions.
-func getResourceLimits(pod *v1.Pod) *schedulercache.Resource {
-	result := &schedulercache.Resource{}
+func getResourceLimits(pod *v1.Pod) *cache.Resource {
+	result := &cache.Resource{}
 	for _, container := range pod.Spec.Containers {
 		result.Add(container.Resources.Limits)
 	}

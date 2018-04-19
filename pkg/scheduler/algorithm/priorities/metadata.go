@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	priorityutil "k8s.io/kubernetes/pkg/scheduler/algorithm/priorities/util"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 )
 
 // PriorityMetadataFactory is a factory to produce PriorityMetadata.
@@ -46,7 +46,7 @@ func NewPriorityMetadataFactory(serviceLister algorithm.ServiceLister, controlle
 
 // priorityMetadata is a type that is passed as metadata for priority functions
 type priorityMetadata struct {
-	nonZeroRequest          *schedulercache.Resource
+	nonZeroRequest          *cache.Resource
 	podTolerations          []v1.Toleration
 	affinity                *v1.Affinity
 	podSelectors            []labels.Selector
@@ -55,7 +55,7 @@ type priorityMetadata struct {
 }
 
 // PriorityMetadata is a PriorityMetadataProducer.  Node info can be nil.
-func (pmf *PriorityMetadataFactory) PriorityMetadata(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) interface{} {
+func (pmf *PriorityMetadataFactory) PriorityMetadata(pod *v1.Pod, nodeNameToInfo map[string]*cache.NodeInfo) interface{} {
 	// If we cannot compute metadata, just return nil
 	if pod == nil {
 		return nil

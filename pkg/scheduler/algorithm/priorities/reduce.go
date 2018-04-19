@@ -20,7 +20,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/cache"
 )
 
 // NormalizeReduce generates a PriorityReduceFunction that can normalize the result
@@ -30,7 +30,7 @@ func NormalizeReduce(maxPriority int, reverse bool) algorithm.PriorityReduceFunc
 	return func(
 		_ *v1.Pod,
 		_ interface{},
-		_ map[string]*schedulercache.NodeInfo,
+		_ map[string]*cache.NodeInfo,
 		result schedulerapi.HostPriorityList) error {
 
 		var maxCount int
