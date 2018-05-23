@@ -506,7 +506,6 @@ func TestGenericSchedulerWithExtenders(t *testing.T) {
 			nil,
 			queue,
 			test.predicates,
-			algorithm.EmptyPredicateMetadataProducer,
 			test.prioritizers,
 			algorithm.EmptyPriorityMetadataProducer,
 			extenders,

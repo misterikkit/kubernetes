@@ -1067,11 +1067,6 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 		return nil, err
 	}
 
-	predicateMetaProducer, err := c.GetPredicateMetadataProducer()
-	if err != nil {
-		return nil, err
-	}
-
 	// Init equivalence class cache
 	if c.enableEquivalenceClassCache {
 		c.equivalencePodCache = core.NewEquivalenceCache()
@@ -1083,7 +1078,6 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 		c.equivalencePodCache,
 		c.podQueue,
 		predicateFuncs,
-		predicateMetaProducer,
 		priorityConfigs,
 		priorityMetaProducer,
 		extenders,
@@ -1139,14 +1133,6 @@ func (c *configFactory) GetPriorityMetadataProducer() (algorithm.PriorityMetadat
 	}
 
 	return getPriorityMetadataProducer(*pluginArgs)
-}
-
-func (c *configFactory) GetPredicateMetadataProducer() (algorithm.PredicateMetadataProducer, error) {
-	pluginArgs, err := c.getPluginArgs()
-	if err != nil {
-		return nil, err
-	}
-	return getPredicateMetadataProducer(*pluginArgs)
 }
 
 func (c *configFactory) GetPredicates(predicateKeys sets.String) (map[string]algorithm.FitPredicate, error) {

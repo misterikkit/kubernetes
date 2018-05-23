@@ -406,8 +406,7 @@ func TestPredicateMetadata_AddRemovePod(t *testing.T) {
 			}
 			_, precompute := NewServiceAffinityPredicate(lister, schedulertesting.FakeServiceLister(test.services), FakeNodeListInfo(nodeList), nil)
 			RegisterPredicateMetadataProducer("ServiceAffinityMetaProducer", precompute)
-			pmf := PredicateMetadataFactory{}
-			meta := pmf.GetMetadata(test.pendingPod, nodeInfoMap)
+			meta := NewMetadata(test.pendingPod, nodeInfoMap)
 			return meta.(*predicateMetadata), nodeInfoMap
 		}
 

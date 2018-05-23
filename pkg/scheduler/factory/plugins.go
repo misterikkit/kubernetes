@@ -52,9 +52,6 @@ type PluginFactoryArgs struct {
 // PriorityMetadataProducerFactory produces PriorityMetadataProducer from the given args.
 type PriorityMetadataProducerFactory func(PluginFactoryArgs) algorithm.PriorityMetadataProducer
 
-// PredicateMetadataProducerFactory produces PredicateMetadataProducer from the given args.
-type PredicateMetadataProducerFactory func(PluginFactoryArgs) algorithm.PredicateMetadataProducer
-
 // FitPredicateFactory produces a FitPredicate from the given args.
 type FitPredicateFactory func(PluginFactoryArgs) algorithm.FitPredicate
 
@@ -85,8 +82,7 @@ var (
 	algorithmProviderMap   = make(map[string]AlgorithmProviderConfig)
 
 	// Registered metadata producers
-	priorityMetadataProducer  PriorityMetadataProducerFactory
-	predicateMetadataProducer PredicateMetadataProducerFactory
+	priorityMetadataProducer PriorityMetadataProducerFactory
 )
 
 const (
@@ -247,13 +243,6 @@ func RegisterPriorityMetadataProducerFactory(factory PriorityMetadataProducerFac
 	priorityMetadataProducer = factory
 }
 
-// RegisterPredicateMetadataProducerFactory registers a PredicateMetadataProducerFactory.
-func RegisterPredicateMetadataProducerFactory(factory PredicateMetadataProducerFactory) {
-	schedulerFactoryMutex.Lock()
-	defer schedulerFactoryMutex.Unlock()
-	predicateMetadataProducer = factory
-}
-
 // RegisterPriorityFunction registers a priority function with the algorithm registry. Returns the name,
 // with which the function was registered.
 // DEPRECATED
@@ -405,16 +394,6 @@ func getPriorityMetadataProducer(args PluginFactoryArgs) (algorithm.PriorityMeta
 		return algorithm.EmptyPriorityMetadataProducer, nil
 	}
 	return priorityMetadataProducer(args), nil
-}
-
-func getPredicateMetadataProducer(args PluginFactoryArgs) (algorithm.PredicateMetadataProducer, error) {
-	schedulerFactoryMutex.Lock()
-	defer schedulerFactoryMutex.Unlock()
-
-	if predicateMetadataProducer == nil {
-		return algorithm.EmptyPredicateMetadataProducer, nil
-	}
-	return predicateMetadataProducer(args), nil
 }
 
 func getPriorityFunctionConfigs(names sets.String, args PluginFactoryArgs) ([]algorithm.PriorityConfig, error) {

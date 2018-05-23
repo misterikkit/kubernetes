@@ -101,17 +101,6 @@ func RegisterPredicateMetadataProducerWithExtendedResourceOptions(ignoredExtende
 	})
 }
 
-// NewPredicateMetadataFactory creates a PredicateMetadataFactory.
-func NewPredicateMetadataFactory(podLister algorithm.PodLister) algorithm.PredicateMetadataProducer {
-	factory := &PredicateMetadataFactory{}
-	return factory.GetMetadata
-}
-
-// GetMetadata returns the predicateMetadata used which will be used by various predicates.
-func (pfactory *PredicateMetadataFactory) GetMetadata(pod *v1.Pod, nodeNameToInfoMap map[string]*schedulercache.NodeInfo) Metadata {
-	return NewMetadata(pod, nodeNameToInfoMap)
-}
-
 // NewMetadata returns the predicateMetadata used which will be used by various predicates.
 func NewMetadata(pod *v1.Pod, nodeNameToInfoMap map[string]*schedulercache.NodeInfo) Metadata {
 	// If we cannot compute metadata, just return nil

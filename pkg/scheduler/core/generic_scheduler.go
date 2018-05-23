@@ -89,7 +89,6 @@ type genericScheduler struct {
 	schedulingQueue          SchedulingQueue
 	predicates               map[string]algorithm.FitPredicate
 	priorityMetaProducer     algorithm.PriorityMetadataProducer
-	predicateMetaProducer    algorithm.PredicateMetadataProducer
 	prioritizers             []algorithm.PriorityConfig
 	extenders                []algorithm.SchedulerExtender
 	lastNodeIndexLock        sync.Mutex
@@ -229,8 +228,7 @@ func (g *genericScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister,
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	nodeToVictims, err := selectNodesForPreemption(pod, g.cachedNodeInfoMap, potentialNodes, g.predicates,
-		g.predicateMetaProducer, g.schedulingQueue, pdbs)
+	nodeToVictims, err := selectNodesForPreemption(pod, g.cachedNodeInfoMap, potentialNodes, g.predicates, g.schedulingQueue, pdbs)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -340,7 +338,7 @@ func (g *genericScheduler) findNodesThatFit(pod *v1.Pod, nodes []*v1.Node) ([]*v
 		var filteredLen int32
 
 		// We can use the same metadata producer for all nodes.
-		meta := g.predicateMetaProducer(pod, g.cachedNodeInfoMap)
+		meta := predicates.NewMetadata(pod, g.cachedNodeInfoMap)
 
 		var equivCacheInfo *equivalenceClassInfo
 		if g.equivalenceCache != nil {
@@ -809,8 +807,7 @@ func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims)
 func selectNodesForPreemption(pod *v1.Pod,
 	nodeNameToInfo map[string]*schedulercache.NodeInfo,
 	potentialNodes []*v1.Node,
-	predicates map[string]algorithm.FitPredicate,
-	metadataProducer algorithm.PredicateMetadataProducer,
+	preds map[string]algorithm.FitPredicate,
 	queue SchedulingQueue,
 	pdbs []*policy.PodDisruptionBudget,
 ) (map[*v1.Node]*schedulerapi.Victims, error) {
@@ -819,14 +816,14 @@ func selectNodesForPreemption(pod *v1.Pod,
 	var resultLock sync.Mutex
 
 	// We can use the same metadata producer for all nodes.
-	meta := metadataProducer(pod, nodeNameToInfo)
+	meta := predicates.NewMetadata(pod, nodeNameToInfo)
 	checkNode := func(i int) {
 		nodeName := potentialNodes[i].Name
 		var metaCopy algorithm.PredicateMetadata
 		if meta != nil {
 			metaCopy = meta.ShallowCopy()
 		}
-		pods, numPDBViolations, fits := selectVictimsOnNode(pod, metaCopy, nodeNameToInfo[nodeName], predicates, queue, pdbs)
+		pods, numPDBViolations, fits := selectVictimsOnNode(pod, metaCopy, nodeNameToInfo[nodeName], preds, queue, pdbs)
 		if fits {
 			resultLock.Lock()
 			victims := schedulerapi.Victims{
@@ -1059,7 +1056,6 @@ func NewGenericScheduler(
 	eCache *EquivalenceCache,
 	podQueue SchedulingQueue,
 	predicates map[string]algorithm.FitPredicate,
-	predicateMetaProducer algorithm.PredicateMetadataProducer,
 	prioritizers []algorithm.PriorityConfig,
 	priorityMetaProducer algorithm.PriorityMetadataProducer,
 	extenders []algorithm.SchedulerExtender,
@@ -1073,7 +1069,6 @@ func NewGenericScheduler(
 		equivalenceCache:         eCache,
 		schedulingQueue:          podQueue,
 		predicates:               predicates,
-		predicateMetaProducer:    predicateMetaProducer,
 		prioritizers:             prioritizers,
 		priorityMetaProducer:     priorityMetaProducer,
 		extenders:                extenders,

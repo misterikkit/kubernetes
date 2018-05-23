@@ -69,11 +69,6 @@ type PriorityConfig struct {
 	Weight   int
 }
 
-// EmptyPredicateMetadataProducer returns a no-op MetadataProducer type.
-func EmptyPredicateMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) PredicateMetadata {
-	return nil
-}
-
 // EmptyPriorityMetadataProducer returns a no-op PriorityMetadataProducer type.
 func EmptyPriorityMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) interface{} {
 	return nil

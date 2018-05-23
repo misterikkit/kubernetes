@@ -248,7 +248,7 @@ func TestRunPredicate(t *testing.T) {
 			node := schedulercache.NewNodeInfo()
 			node.SetNode(&v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "n1"}})
 			pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "p1"}}
-			meta := algorithm.EmptyPredicateMetadataProducer(nil, nil)
+			meta := predicates.NewMetadata(nil, nil)
 
 			ecache := NewEquivalenceCache()
 			equivClass := ecache.getEquivalenceClassInfo(pod)
@@ -866,7 +866,6 @@ func TestEquivalenceCacheInvalidationRace(t *testing.T) {
 		eCache,
 		NewSchedulingQueue(),
 		ps,
-		algorithm.EmptyPredicateMetadataProducer,
 		prioritizers,
 		algorithm.EmptyPriorityMetadataProducer,
 		nil, nil, pvcLister, true, false)
