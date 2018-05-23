@@ -54,13 +54,17 @@ type priorityMetadata struct {
 	podFirstServiceSelector labels.Selector
 }
 
+// Metadata contains precomputed info for use in priority functions.
+type Metadata = priorityMetadata
+
 // PriorityMetadata is a PriorityMetadataProducer.  Node info can be nil.
+// TODO(misterikkit): replace interface{} with Metadata
 func (pmf *PriorityMetadataFactory) PriorityMetadata(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) interface{} {
 	// If we cannot compute metadata, just return nil
 	if pod == nil {
 		return nil
 	}
-	return &priorityMetadata{
+	return &Metadata{
 		nonZeroRequest:          getNonZeroRequests(pod),
 		podTolerations:          getAllTolerationPreferNoSchedule(pod.Spec.Tolerations),
 		affinity:                pod.Spec.Affinity,

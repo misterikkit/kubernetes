@@ -35,7 +35,6 @@ import (
 
 // PredicateMetadataFactory defines a factory of predicate metadata.
 type PredicateMetadataFactory struct {
-	podLister algorithm.PodLister
 }
 
 //  Note that predicateMetadata and matchingPodAntiAffinityTerm need to be declared in the same file
@@ -75,6 +74,9 @@ type predicateMetadata struct {
 // Ensure that predicateMetadata implements algorithm.PredicateMetadata.
 var _ algorithm.PredicateMetadata = &predicateMetadata{}
 
+// Metadata contains precomputed info for use in predicates.
+type Metadata = algorithm.PredicateMetadata
+
 // PredicateMetadataProducer function produces predicate metadata.
 type PredicateMetadataProducer func(pm *predicateMetadata)
 
@@ -101,14 +103,17 @@ func RegisterPredicateMetadataProducerWithExtendedResourceOptions(ignoredExtende
 
 // NewPredicateMetadataFactory creates a PredicateMetadataFactory.
 func NewPredicateMetadataFactory(podLister algorithm.PodLister) algorithm.PredicateMetadataProducer {
-	factory := &PredicateMetadataFactory{
-		podLister,
-	}
+	factory := &PredicateMetadataFactory{}
 	return factory.GetMetadata
 }
 
 // GetMetadata returns the predicateMetadata used which will be used by various predicates.
-func (pfactory *PredicateMetadataFactory) GetMetadata(pod *v1.Pod, nodeNameToInfoMap map[string]*schedulercache.NodeInfo) algorithm.PredicateMetadata {
+func (pfactory *PredicateMetadataFactory) GetMetadata(pod *v1.Pod, nodeNameToInfoMap map[string]*schedulercache.NodeInfo) Metadata {
+	return NewMetadata(pod, nodeNameToInfoMap)
+}
+
+// NewMetadata returns the predicateMetadata used which will be used by various predicates.
+func NewMetadata(pod *v1.Pod, nodeNameToInfoMap map[string]*schedulercache.NodeInfo) Metadata {
 	// If we cannot compute metadata, just return nil
 	if pod == nil {
 		return nil
@@ -259,7 +264,7 @@ func (meta *predicateMetadata) AddPod(addedPod *v1.Pod, nodeInfo *schedulercache
 
 // ShallowCopy copies a metadata struct into a new struct and creates a copy of
 // its maps and slices, but it does not copy the contents of pointer values.
-func (meta *predicateMetadata) ShallowCopy() algorithm.PredicateMetadata {
+func (meta *predicateMetadata) ShallowCopy() Metadata {
 	newPredMeta := &predicateMetadata{
 		pod:                      meta.pod,
 		podBestEffort:            meta.podBestEffort,
@@ -284,7 +289,7 @@ func (meta *predicateMetadata) ShallowCopy() algorithm.PredicateMetadata {
 		meta.serviceAffinityMatchingPodServices...)
 	newPredMeta.serviceAffinityMatchingPodList = append([]*v1.Pod(nil),
 		meta.serviceAffinityMatchingPodList...)
-	return (algorithm.PredicateMetadata)(newPredMeta)
+	return (Metadata)(newPredMeta)
 }
 
 type affinityTermProperties struct {
