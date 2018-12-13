@@ -44,6 +44,7 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
+	"k8s.io/kubernetes/pkg/scheduler/algorithm/priorities"
 	"k8s.io/kubernetes/pkg/scheduler/api"
 	kubeschedulerconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/core"
@@ -156,7 +157,7 @@ func (es mockScheduler) Schedule(pod *v1.Pod, ml algorithm.NodeLister) (string, 
 func (es mockScheduler) Predicates() map[string]algorithm.FitPredicate {
 	return nil
 }
-func (es mockScheduler) Prioritizers() []algorithm.PriorityConfig {
+func (es mockScheduler) Prioritizers() []priorities.PriorityConfig {
 	return nil
 }
 
@@ -211,7 +212,7 @@ func TestScheduler(t *testing.T) {
 		name             string
 		injectBindError  error
 		sendPod          *v1.Pod
-		algo             algorithm.ScheduleAlgorithm
+		algo             core.ScheduleAlgorithm
 		expectErrorPod   *v1.Pod
 		expectForgetPod  *v1.Pod
 		expectAssumedPod *v1.Pod
@@ -642,8 +643,8 @@ func setupTestScheduler(queuedPodStore *clientcache.FIFO, scache schedulerintern
 		nil,
 		predicateMap,
 		algorithm.EmptyPredicateMetadataProducer,
-		[]algorithm.PriorityConfig{},
-		algorithm.EmptyPriorityMetadataProducer,
+		[]priorities.PriorityConfig{},
+		priorities.EmptyPriorityMetadataProducer,
 		&EmptyPluginSet{},
 		[]algorithm.SchedulerExtender{},
 		nil,
@@ -695,8 +696,8 @@ func setupTestSchedulerLongBindingWithRetry(queuedPodStore *clientcache.FIFO, sc
 		nil,
 		predicateMap,
 		algorithm.EmptyPredicateMetadataProducer,
-		[]algorithm.PriorityConfig{},
-		algorithm.EmptyPriorityMetadataProducer,
+		[]priorities.PriorityConfig{},
+		priorities.EmptyPriorityMetadataProducer,
 		&EmptyPluginSet{},
 		[]algorithm.SchedulerExtender{},
 		nil,

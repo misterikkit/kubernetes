@@ -42,7 +42,7 @@ func init() {
 			return predicates.NewPredicateMetadataFactory(args.PodLister)
 		})
 	factory.RegisterPriorityMetadataProducerFactory(
-		func(args factory.PluginFactoryArgs) algorithm.PriorityMetadataProducer {
+		func(args factory.PluginFactoryArgs) priorities.PriorityMetadataProducer {
 			return priorities.NewPriorityMetadataFactory(args.ServiceLister, args.ControllerLister, args.ReplicaSetLister, args.StatefulSetLister)
 		})
 
@@ -84,7 +84,7 @@ func init() {
 	factory.RegisterPriorityConfigFactory(
 		"ServiceSpreadingPriority",
 		factory.PriorityConfigFactory{
-			MapReduceFunction: func(args factory.PluginFactoryArgs) (algorithm.PriorityMapFunction, algorithm.PriorityReduceFunction) {
+			MapReduceFunction: func(args factory.PluginFactoryArgs) (priorities.PriorityMapFunction, priorities.PriorityReduceFunction) {
 				return priorities.NewSelectorSpreadPriority(args.ServiceLister, algorithm.EmptyControllerLister{}, algorithm.EmptyReplicaSetLister{}, algorithm.EmptyStatefulSetLister{})
 			},
 			Weight: 1,
@@ -234,7 +234,7 @@ func defaultPriorities() sets.String {
 		factory.RegisterPriorityConfigFactory(
 			"SelectorSpreadPriority",
 			factory.PriorityConfigFactory{
-				MapReduceFunction: func(args factory.PluginFactoryArgs) (algorithm.PriorityMapFunction, algorithm.PriorityReduceFunction) {
+				MapReduceFunction: func(args factory.PluginFactoryArgs) (priorities.PriorityMapFunction, priorities.PriorityReduceFunction) {
 					return priorities.NewSelectorSpreadPriority(args.ServiceLister, args.ControllerLister, args.ReplicaSetLister, args.StatefulSetLister)
 				},
 				Weight: 1,
@@ -245,7 +245,7 @@ func defaultPriorities() sets.String {
 		factory.RegisterPriorityConfigFactory(
 			"InterPodAffinityPriority",
 			factory.PriorityConfigFactory{
-				Function: func(args factory.PluginFactoryArgs) algorithm.PriorityFunction {
+				Function: func(args factory.PluginFactoryArgs) priorities.PriorityFunction {
 					return priorities.NewInterPodAffinityPriority(args.NodeInfo, args.NodeLister, args.PodLister, args.HardPodAffinitySymmetricWeight)
 				},
 				Weight: 1,

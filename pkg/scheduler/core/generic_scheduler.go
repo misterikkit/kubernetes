@@ -38,6 +38,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
+	"k8s.io/kubernetes/pkg/scheduler/algorithm/priorities"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	"k8s.io/kubernetes/pkg/scheduler/core/equivalence"
 	schedulerinternalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
@@ -96,14 +97,32 @@ func (f *FitError) Error() string {
 	return reasonMsg
 }
 
+// ScheduleAlgorithm is an interface implemented by things that know how to schedule pods
+// onto machines.
+// TODO: Rename this interface
+type ScheduleAlgorithm interface {
+	Schedule(*v1.Pod, algorithm.NodeLister) (selectedMachine string, err error)
+	// Preempt receives scheduling errors for a pod and tries to create room for
+	// the pod by preempting lower priority pods if possible.
+	// It returns the node where preemption happened, a list of preempted pods, a
+	// list of pods whose nominated node name should be removed, and error if any.
+	Preempt(*v1.Pod, algorithm.NodeLister, error) (selectedNode *v1.Node, preemptedPods []*v1.Pod, cleanupNominatedPods []*v1.Pod, err error)
+	// Predicates() returns a pointer to a map of predicate functions. This is
+	// exposed for testing.
+	Predicates() map[string]algorithm.FitPredicate
+	// Prioritizers returns a slice of priority config. This is exposed for
+	// testing.
+	Prioritizers() []priorities.PriorityConfig
+}
+
 type genericScheduler struct {
 	cache                    schedulerinternalcache.Cache
 	equivalenceCache         *equivalence.Cache
 	schedulingQueue          internalqueue.SchedulingQueue
 	predicates               map[string]algorithm.FitPredicate
-	priorityMetaProducer     algorithm.PriorityMetadataProducer
+	priorityMetaProducer     priorities.PriorityMetadataProducer
 	predicateMetaProducer    algorithm.PredicateMetadataProducer
-	prioritizers             []algorithm.PriorityConfig
+	prioritizers             []priorities.PriorityConfig
 	pluginSet                pluginsv1alpha1.PluginSet
 	extenders                []algorithm.SchedulerExtender
 	lastNodeIndex            uint64
@@ -198,7 +217,7 @@ func (g *genericScheduler) Schedule(pod *v1.Pod, nodeLister algorithm.NodeLister
 
 // Prioritizers returns a slice containing all the scheduler's priority
 // functions and their config. It is exposed for testing only.
-func (g *genericScheduler) Prioritizers() []algorithm.PriorityConfig {
+func (g *genericScheduler) Prioritizers() []priorities.PriorityConfig {
 	return g.prioritizers
 }
 
@@ -624,7 +643,7 @@ func PrioritizeNodes(
 	pod *v1.Pod,
 	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
 	meta interface{},
-	priorityConfigs []algorithm.PriorityConfig,
+	priorityConfigs []priorities.PriorityConfig,
 	nodes []*v1.Node,
 	extenders []algorithm.SchedulerExtender,
 ) (schedulerapi.HostPriorityList, error) {
@@ -1154,8 +1173,8 @@ func NewGenericScheduler(
 	podQueue internalqueue.SchedulingQueue,
 	predicates map[string]algorithm.FitPredicate,
 	predicateMetaProducer algorithm.PredicateMetadataProducer,
-	prioritizers []algorithm.PriorityConfig,
-	priorityMetaProducer algorithm.PriorityMetadataProducer,
+	prioritizers []priorities.PriorityConfig,
+	priorityMetaProducer priorities.PriorityMetadataProducer,
 	pluginSet pluginsv1alpha1.PluginSet,
 	extenders []algorithm.SchedulerExtender,
 	volumeBinder *volumebinder.VolumeBinder,
@@ -1164,7 +1183,7 @@ func NewGenericScheduler(
 	alwaysCheckAllPredicates bool,
 	disablePreemption bool,
 	percentageOfNodesToScore int32,
-) algorithm.ScheduleAlgorithm {
+) ScheduleAlgorithm {
 	return &genericScheduler{
 		cache:                    cache,
 		equivalenceCache:         eCache,
