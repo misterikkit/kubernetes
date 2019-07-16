@@ -179,7 +179,7 @@ type VSphereConfig struct {
 
 	Disk struct {
 		// SCSIControllerType defines SCSI controller to be used.
-		SCSIControllerType string `dcfg:"scsicontrollertype"`
+		SCSIControllerType string `gcfg:"scsicontrollertype"`
 	}
 
 	// Endpoint used to create volumes
